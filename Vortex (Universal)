@@ -1,0 +1,478 @@
+-- VORTEX (Universal) | Movement Controller
+-- LocalScript
+-- StarterPlayer > StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+
+local character
+local humanoid
+local root
+
+local speedEnabled = false
+local flyEnabled = false
+local noclipEnabled = false
+
+local walkSpeed = 16
+local flySpeed = 60
+
+local bodyVelocity
+local bodyGyro
+
+local function setupCharacter(char)
+	character = char
+	humanoid = char:WaitForChild("Humanoid")
+	root = char:WaitForChild("HumanoidRootPart")
+
+	if speedEnabled then
+		humanoid.WalkSpeed = walkSpeed
+	else
+		humanoid.WalkSpeed = 16
+	end
+end
+
+setupCharacter(player.Character or player.CharacterAdded:Wait())
+
+player.CharacterAdded:Connect(function(char)
+	if flyEnabled then
+		flyEnabled = false
+
+		if bodyVelocity then
+			bodyVelocity:Destroy()
+			bodyVelocity = nil
+		end
+
+		if bodyGyro then
+			bodyGyro:Destroy()
+			bodyGyro = nil
+		end
+	end
+
+	setupCharacter(char)
+end)
+
+--==================================================
+-- GUI
+--==================================================
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "VORTEX_Universal"
+gui.ResetOnSpawn = false
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = player:WaitForChild("PlayerGui")
+
+--==================================================
+-- MAIN
+--==================================================
+
+local main = Instance.new("Frame")
+main.Name = "Main"
+main.Size = UDim2.fromOffset(280, 315)
+main.Position = UDim2.new(0.5, -140, 0.5, -157)
+main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+main.BorderSizePixel = 0
+main.Parent = gui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 12)
+mainCorner.Parent = main
+
+local mainStroke = Instance.new("UIStroke")
+mainStroke.Color = Color3.fromRGB(255, 255, 255)
+mainStroke.Transparency = 0.7
+mainStroke.Parent = main
+
+--==================================================
+-- MAIN DRAG
+--==================================================
+
+local dragging = false
+local dragStart
+local startPosition
+
+main.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+
+		dragging = true
+		dragStart = input.Position
+		startPosition = main.Position
+
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if dragging then
+		if input.UserInputType == Enum.UserInputType.MouseMovement
+			or input.UserInputType == Enum.UserInputType.Touch then
+
+			local delta = input.Position - dragStart
+
+			main.Position = UDim2.new(
+				startPosition.X.Scale,
+				startPosition.X.Offset + delta.X,
+				startPosition.Y.Scale,
+				startPosition.Y.Offset + delta.Y
+			)
+		end
+	end
+end)
+
+--==================================================
+-- TITLE
+--==================================================
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -20, 0, 40)
+title.Position = UDim2.fromOffset(10, 5)
+title.BackgroundTransparency = 1
+title.Text = "VORTEX (Universal)"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 21
+title.Font = Enum.Font.GothamBold
+title.Parent = main
+
+local subtitle = Instance.new("TextLabel")
+subtitle.Size = UDim2.new(1, -20, 0, 18)
+subtitle.Position = UDim2.fromOffset(10, 39)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "MOVEMENT"
+subtitle.TextColor3 = Color3.fromRGB(150, 150, 150)
+subtitle.TextSize = 10
+subtitle.Font = Enum.Font.Gotham
+subtitle.Parent = main
+
+--==================================================
+-- BUTTON FUNCTION
+--==================================================
+
+local function createButton(text, y)
+	local button = Instance.new("TextButton")
+
+	button.Size = UDim2.new(1, -30, 0, 40)
+	button.Position = UDim2.fromOffset(15, y)
+
+	button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	button.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+	button.Text = text
+	button.TextSize = 14
+	button.Font = Enum.Font.GothamSemibold
+
+	button.AutoButtonColor = false
+	button.Parent = main
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = button
+
+	return button
+end
+
+--==================================================
+-- SPEED
+--==================================================
+
+local speedButton = createButton("Speed: OFF", 67)
+
+speedButton.MouseButton1Click:Connect(function()
+	speedEnabled = not speedEnabled
+
+	if humanoid then
+		humanoid.WalkSpeed = speedEnabled and walkSpeed or 16
+	end
+
+	speedButton.Text = speedEnabled and "Speed: ON" or "Speed: OFF"
+end)
+
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.fromOffset(120, 22)
+speedLabel.Position = UDim2.fromOffset(15, 111)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Text = "Speed Number"
+speedLabel.TextColor3 = Color3.fromRGB(170, 170, 170)
+speedLabel.TextSize = 11
+speedLabel.Font = Enum.Font.Gotham
+speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+speedLabel.Parent = main
+
+local speedBox = Instance.new("TextBox")
+speedBox.Size = UDim2.fromOffset(105, 32)
+speedBox.Position = UDim2.new(1, -120, 0, 106)
+speedBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+speedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedBox.Text = "16"
+speedBox.PlaceholderText = "1-700"
+speedBox.TextSize = 13
+speedBox.Font = Enum.Font.Gotham
+speedBox.ClearTextOnFocus = false
+speedBox.Parent = main
+
+local speedCorner = Instance.new("UICorner")
+speedCorner.CornerRadius = UDim.new(0, 7)
+speedCorner.Parent = speedBox
+
+speedBox.FocusLost:Connect(function()
+	local value = tonumber(speedBox.Text)
+
+	if value then
+		walkSpeed = math.clamp(math.floor(value), 1, 700)
+		speedBox.Text = tostring(walkSpeed)
+
+		if speedEnabled and humanoid then
+			humanoid.WalkSpeed = walkSpeed
+		end
+	else
+		speedBox.Text = tostring(walkSpeed)
+	end
+end)
+
+--==================================================
+-- FLY
+--==================================================
+
+local flyButton = createButton("Fly: OFF", 144)
+
+flyButton.MouseButton1Click:Connect(function()
+	if flyEnabled then
+
+		flyEnabled = false
+
+		if bodyVelocity then
+			bodyVelocity:Destroy()
+			bodyVelocity = nil
+		end
+
+		if bodyGyro then
+			bodyGyro:Destroy()
+			bodyGyro = nil
+		end
+
+		if humanoid then
+			humanoid.PlatformStand = false
+		end
+
+		flyButton.Text = "Fly: OFF"
+
+	else
+
+		if root and humanoid then
+			flyEnabled = true
+
+			bodyVelocity = Instance.new("BodyVelocity")
+			bodyVelocity.Name = "VortexFlyVelocity"
+			bodyVelocity.MaxForce = Vector3.new(
+				math.huge,
+				math.huge,
+				math.huge
+			)
+			bodyVelocity.P = 10000
+			bodyVelocity.Velocity = Vector3.zero
+			bodyVelocity.Parent = root
+
+			bodyGyro = Instance.new("BodyGyro")
+			bodyGyro.Name = "VortexFlyGyro"
+			bodyGyro.MaxTorque = Vector3.new(
+				math.huge,
+				math.huge,
+				math.huge
+			)
+			bodyGyro.P = 50000
+			bodyGyro.D = 1000
+			bodyGyro.CFrame = root.CFrame
+			bodyGyro.Parent = root
+
+			humanoid.PlatformStand = true
+
+			flyButton.Text = "Fly: ON"
+		end
+	end
+end)
+
+local flyLabel = Instance.new("TextLabel")
+flyLabel.Size = UDim2.fromOffset(120, 22)
+flyLabel.Position = UDim2.fromOffset(15, 188)
+flyLabel.BackgroundTransparency = 1
+flyLabel.Text = "Fly Speed"
+flyLabel.TextColor3 = Color3.fromRGB(170, 170, 170)
+flyLabel.TextSize = 11
+flyLabel.Font = Enum.Font.Gotham
+flyLabel.TextXAlignment = Enum.TextXAlignment.Left
+flyLabel.Parent = main
+
+local flyBox = Instance.new("TextBox")
+flyBox.Size = UDim2.fromOffset(105, 32)
+flyBox.Position = UDim2.new(1, -120, 0, 183)
+flyBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+flyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+flyBox.Text = "60"
+flyBox.PlaceholderText = "1-500"
+flyBox.TextSize = 13
+flyBox.Font = Enum.Font.Gotham
+flyBox.ClearTextOnFocus = false
+flyBox.Parent = main
+
+local flyCorner = Instance.new("UICorner")
+flyCorner.CornerRadius = UDim.new(0, 7)
+flyCorner.Parent = flyBox
+
+flyBox.FocusLost:Connect(function()
+	local value = tonumber(flyBox.Text)
+
+	if value then
+		flySpeed = math.clamp(math.floor(value), 1, 500)
+		flyBox.Text = tostring(flySpeed)
+	else
+		flyBox.Text = tostring(flySpeed)
+	end
+end)
+
+--==================================================
+-- NO CLIP
+--==================================================
+
+local noclipButton = createButton("No Clip: OFF", 221)
+
+noclipButton.MouseButton1Click:Connect(function()
+	noclipEnabled = not noclipEnabled
+
+	noclipButton.Text =
+		noclipEnabled and "No Clip: ON" or "No Clip: OFF"
+end)
+
+--==================================================
+-- V LOGO
+-- ALWAYS VISIBLE
+--==================================================
+
+local logo = Instance.new("TextButton")
+logo.Name = "VortexLogo"
+logo.Size = UDim2.fromOffset(58, 58)
+logo.Position = UDim2.new(0, 20, 0.5, -29)
+
+logo.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+logo.Text = "V"
+logo.TextColor3 = Color3.fromRGB(255, 255, 255)
+logo.TextSize = 28
+logo.Font = Enum.Font.GothamBlack
+
+-- Logo stays visible while UI is open
+logo.Visible = true
+logo.ZIndex = 100
+logo.Parent = gui
+
+local logoCorner = Instance.new("UICorner")
+logoCorner.CornerRadius = UDim.new(1, 0)
+logoCorner.Parent = logo
+
+local logoStroke = Instance.new("UIStroke")
+logoStroke.Color = Color3.fromRGB(255, 255, 255)
+logoStroke.Transparency = 0.5
+logoStroke.Parent = logo
+
+--==================================================
+-- DRAGGABLE LOGO
+--==================================================
+
+local logoDragging = false
+local logoDragStart
+local logoStartPosition
+
+logo.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+
+		logoDragging = true
+		logoDragStart = input.Position
+		logoStartPosition = logo.Position
+
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				logoDragging = false
+			end
+		end)
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if logoDragging then
+		if input.UserInputType == Enum.UserInputType.MouseMovement
+			or input.UserInputType == Enum.UserInputType.Touch then
+
+			local delta = input.Position - logoDragStart
+
+			logo.Position = UDim2.new(
+				logoStartPosition.X.Scale,
+				logoStartPosition.X.Offset + delta.X,
+				logoStartPosition.Y.Scale,
+				logoStartPosition.Y.Offset + delta.Y
+			)
+		end
+	end
+end)
+
+--==================================================
+-- LOGO TOGGLE
+--==================================================
+
+local logoPressStart = 0
+
+logo.MouseButton1Down:Connect(function()
+	logoPressStart = os.clock()
+end)
+
+logo.MouseButton1Click:Connect(function()
+	if os.clock() - logoPressStart < 0.25 then
+		main.Visible = not main.Visible
+	end
+end)
+
+--==================================================
+-- MOVEMENT LOOP
+--==================================================
+
+RunService.RenderStepped:Connect(function()
+	if not character or not humanoid or not root then
+		return
+	end
+
+	-- NO CLIP
+	if noclipEnabled then
+		for _, object in ipairs(character:GetDescendants()) do
+			if object:IsA("BasePart") then
+				object.CanCollide = false
+			end
+		end
+	end
+
+	-- FLY
+	if flyEnabled and bodyVelocity and bodyGyro then
+		local camera = workspace.CurrentCamera
+
+		-- Humanoid.MoveDirection follows the Roblox
+		-- mobile joystick / keyboard movement.
+
+		local moveDirection = humanoid.MoveDirection
+
+		if moveDirection.Magnitude > 0 then
+			bodyVelocity.Velocity =
+				moveDirection.Unit * flySpeed
+		else
+			bodyVelocity.Velocity = Vector3.zero
+		end
+
+		-- Face the direction the camera is looking.
+		bodyGyro.CFrame = CFrame.lookAt(
+			root.Position,
+			root.Position + camera.CFrame.LookVector
+		)
+	end
+end)
